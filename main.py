@@ -1,5 +1,6 @@
 import requests
 import base64
+import csv
 
 
 def auth():
@@ -18,7 +19,7 @@ def auth():
     headers = {
         "Authorization": f"Basic {token}"
     }
-    get_query_results(organization, project, query_id, headers)
+    return organization, project, query_id, headers
 
 
 def get_query_results(organization, project, query_id, headers):
@@ -36,11 +37,11 @@ def get_query_results(organization, project, query_id, headers):
             task_ids.append(query['id'])
     else:
         print("Falha ao buscar a consulta. Código de status:", response.status_code)
-    get_items_results(task_ids, organization, headers)
     return task_ids
 
 
 def get_items_results(task_ids, organization, headers):
+    processed_data = []
     fields = [
         "System.Id",
         "System.Title",
@@ -55,24 +56,82 @@ def get_items_results(task_ids, organization, headers):
         "Microsoft.VSTS.Common.ClosedBy",
         "Microsoft.VSTS.Common.ValueArea",
         "Custom.Customer",
-        "Custom.Squad",
         "Custom.As",
         "Custom.For",
         "Custom.Iwant",
         "Custom.97a1d976-966c-491b-a2aa-ab4d34ac9caa"  # CS/GP
     ]
-
     lista_fields = ','.join(fields)
     for item in task_ids:
         #  fonte: https://learn.microsoft.com/pt-br/rest/api/azure/devops/wit/work-items/list?tabs=HTTP
         url_task = f'https://dev.azure.com/{organization}/_apis/wit/workitems?ids={item}&fields={lista_fields}&api-version=7.2-preview.3'
-        # url_task = f'https://dev.azure.com/{organization}/_apis/wit/workitems?ids=59361&$expand=all&api-version=7.2-preview.3'
         response = requests.get(url_task, headers=headers)
         if response.status_code == 200:
             task_data = response.json()
-            print(task_data)
+            id = task_data['value'][0]['fields']['System.Id']
+            title = task_data['value'][0]['fields']['System.Title']
+            type = task_data['value'][0]['fields']['System.WorkItemType']
+            state = task_data['value'][0]['fields']['System.State']
+            if 'System.AssignedTo' in task_data['value'][0]['fields']:
+                assigned_to = task_data['value'][0]['fields']['System.AssignedTo']['displayName']
+            else:
+                assigned_to = ''
+            area_path = task_data['value'][0]['fields']['System.AreaPath']
+            created_date = task_data['value'][0]['fields']['System.CreatedDate']
+            created_by = task_data['value'][0]['fields']['System.CreatedBy']['displayName']
+            priority = task_data['value'][0]['fields']['Microsoft.VSTS.Common.Priority']
+            closed_date = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ClosedDate']
+            closed_by = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ClosedBy']['displayName']
+            value_area = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ValueArea']
+            customer = task_data['value'][0]['fields']['Custom.Customer']
+            if 'Custom.97a1d976-966c-491b-a2aa-ab4d34ac9caa' in task_data['value'][0]['fields']:
+                gp_cs = task_data['value'][0]['fields']['Custom.97a1d976-966c-491b-a2aa-ab4d34ac9caa']['displayName']
+            else:
+                gp_cs = ''
+            processed_data.append([id,
+                                   title,
+                                   type,
+                                   state,
+                                   assigned_to,
+                                   area_path,
+                                   created_date,
+                                   created_by,
+                                   priority,
+                                   closed_date,
+                                   closed_by,
+                                   value_area,
+                                   customer,
+                                   gp_cs])
         else:
             print("Falha ao buscar a consulta. Código de status:", response.status_code)
+            # Salvar o arquivo
+        return processed_data
+        
+
+def salvar_csv(processed_data):         
+    with open('teste.csv', "w", newline="", encoding="utf-8") as arquivo_csv:
+        escritor_csv = csv.writer(arquivo_csv, delimiter=";")
+        # Escrever o cabeçalho
+        cabecalho = ['id',
+                     'title',
+                     'type',
+                     'state',
+                     'assigned_to',
+                     'area_path',
+                     'created_date',
+                     'created_by',
+                     'priority',
+                     'closed_date',
+                     'closed_by',
+                     'value_area',
+                     'customer',
+                     'gp_cs']
+        escritor_csv.writerow(cabecalho)
+        for linha in processed_data:
+            escritor_csv.writerow(linha)
 
 
-auth()
+organization, project, query_id, headers = auth()
+task_ids = get_query_results(organization, project, query_id, headers)
+processed_data = get_items_results(task_ids, organization, headers)
+salvar_csv(processed_data)
