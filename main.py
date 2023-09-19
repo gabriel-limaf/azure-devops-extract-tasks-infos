@@ -77,12 +77,24 @@ def get_items_results(task_ids, organization, headers):
             else:
                 assigned_to = ''
             area_path = task_data['value'][0]['fields']['System.AreaPath']
-            created_date = task_data['value'][0]['fields']['System.CreatedDate']
+            if 'System.CreatedDate' in task_data['value'][0]['fields']:
+                created_date = task_data['value'][0]['fields']['System.CreatedDate']
+            else:
+                created_date = ''
             created_by = task_data['value'][0]['fields']['System.CreatedBy']['displayName']
             priority = task_data['value'][0]['fields']['Microsoft.VSTS.Common.Priority']
-            closed_date = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ClosedDate']
-            closed_by = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ClosedBy']['displayName']
-            value_area = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ValueArea']
+            if 'Microsoft.VSTS.Common.ClosedDate' in task_data['value'][0]['fields']:
+                closed_date = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ClosedDate']
+            else:
+                closed_date = ''
+            if 'Microsoft.VSTS.Common.ClosedBy' in task_data['value'][0]['fields']:
+                closed_by = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ClosedBy']['displayName']
+            else:
+                closed_by = ''
+            if 'Microsoft.VSTS.Common.ValueArea' in task_data['value'][0]['fields']:
+                value_area = task_data['value'][0]['fields']['Microsoft.VSTS.Common.ValueArea']
+            else:
+                value_area = ''
             customer = task_data['value'][0]['fields']['Custom.Customer']
             if 'Custom.97a1d976-966c-491b-a2aa-ab4d34ac9caa' in task_data['value'][0]['fields']:
                 gp_cs = task_data['value'][0]['fields']['Custom.97a1d976-966c-491b-a2aa-ab4d34ac9caa']['displayName']
@@ -105,10 +117,10 @@ def get_items_results(task_ids, organization, headers):
         else:
             print("Falha ao buscar a consulta. Código de status:", response.status_code)
             # Salvar o arquivo
-        return processed_data
-        
+    return processed_data
 
-def salvar_csv(processed_data):         
+
+def salvar_csv(processed_data):
     with open('teste.csv', "w", newline="", encoding="utf-8") as arquivo_csv:
         escritor_csv = csv.writer(arquivo_csv, delimiter=";")
         # Escrever o cabeçalho
